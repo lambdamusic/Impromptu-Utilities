@@ -1,14 +1,20 @@
-Libraries for the Impromptu livecoding environment
------------------------------------------
+Impromptu Livecoding Libraries
+=============
+Scheme functions for speedier Impromptu livecoding.
 
-http://impromptu.moso.com.au/
-(note that pc-ivl-lib.scm and xml_lib.scm are taken directly from the Impromptu codebase)
+###What is Impromptu?
 
+Impromptu (http://impromptu.moso.com.au/) is an OSX programming language and environment for composers, sound artists, VJ's and graphic artists with an interest in live or interactive programming. Impromptu is a Scheme language environment, a member of the Lisp family of languages. Impromptu is used by artist-programmers in livecoding performances around the globe.
+
+###What's in the libraries? 
+A bunch of scheme functions that can make your life easier when you're writing code for Impromptu. Stuff for operating with beats, playing music, and other utils too (note that pc-ivl-lib.scm and xml_lib.scm are taken directly from the Impromptu codebase).
+
+###How to load? 
 To load the libraries just customize the loader.scm file with you libraries location, eg:
 
-(define *sys:home_libs* "/Users/mac/code/impromptu/_libs/")
+``(define *sys:home_libs* "/Users/mac/code/impromptu/_libs/")``
 
-Then dump the loader.scm file on your mac's Application Support/Impromtu so that it's loaded at startup. Have fun!
+Then dump the ``loader.scm`` file on your mac's ``Application Support/Impromptu/`` folder so that it's loaded at startup. Have fun!
 
 
 
