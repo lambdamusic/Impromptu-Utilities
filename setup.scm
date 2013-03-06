@@ -61,6 +61,11 @@
 
 
 
+(define --create setup:create-au)
+
+
+
+
 
 
 ;; macro that loads up the basic stuff you need to get going
@@ -82,6 +87,54 @@
 
 ;; shortcut
 (define --setup setup:base)
+
+
+
+
+
+
+;;--------
+;  Wed Mar  6 19:02:08 GMT 2013
+;  LOADING SAMPLES FROM DIRECTORY 
+
+;; creates symbols for each one: "=sample1.wav="
+;; subs white spaces with '-' and lowercases the names
+
+;eg
+
+;(--setup)
+;(--create sam ++impromptusampler 2)
+;(=load= sam "/Users/michele.pasin/Music/_samples/Drum Machines/Moog Concertmate MG-1" 1)
+;;--------
+
+
+(define setup:load_samples 
+   (lambda (sampler location)
+      (let ((files (string-split (io:directory-list location) "\n"))
+            (index 1))
+         (for-each (lambda (x)
+                      (if (or (cl:string-find x ".wav") (cl:string-find x ".aif"))
+                          (begin (au:play:set-sample-data sampler index (au:load-audio-data (string-append location "/" x)))
+                                 (let ((name (string->atom (string-append "=" (cl:string-lower (string-replace x " " "-")) "="))))
+                                    (eval `(define ,name ,index)  (interaction-environment))
+                                    (print '==>Loaded 'sample: x 'as name))
+                                 (set! index (+ index 1)))))
+                   files))))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -367,5 +420,16 @@
 (define setup:stop-screencast 
    (lambda ()
       (gfx:stop-movie-capture *canvas*)))
+
+
+
+
+
+
+
+
+
+
+
 
 

@@ -244,13 +244,30 @@
       (string-append (string (char-upcase (string-ref s 0))) (substring s 1 (string-length s)))))
 
 
+;; makes a string lower case
+(define cl:string-lower
+   (lambda (s)
+      (let ((out ""))
+         (for-each (lambda (x)
+             (set! out (string-append out (string (char-downcase x)))))
+          (string->list s))
+         out)))
 
+
+;; makes a string upper case
+(define cl:string-upper
+   (lambda (s)
+      (let ((out ""))
+         (for-each (lambda (x)
+             (set! out (string-append out (string (char-upcase x)))))
+          (string->list s))
+         out)))
 
 
 
 ;; works only with single chars for now
 ;; return the position of a char in a string
-(define cl:string-find 
+(define cl:string-find-char 
    (lambda (z singlechar)
       (if (> (string-length singlechar) 1)
           (print "can't match strings longer than 1 char")
@@ -264,7 +281,18 @@
 
 
 
-(if #f (cl:string-find "M 3.4, Central California" "M"))
+(if #f (cl:string-find-char "M 3.4, Central California" "M"))
+
+
+
+;; hack for checking is a string exists in another string
+(define cl:string-find
+   (lambda (s find)
+      (if (> (string-length s)
+             (string-length (string-replace s find "")))
+          #t
+          #f)))
+
 
 
 
