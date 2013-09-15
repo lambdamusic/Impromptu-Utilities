@@ -127,7 +127,7 @@
 ;;;--------
 
 ;;<signature>
-(define onbeat? (lambda (measure downbeat . procedures) '()))
+(define onbeat? (lambda (measure downbeat &procedures) '()))
 ;;</signature>
 
 (define-macro (onbeat? x y . args)
@@ -157,7 +157,7 @@
 ;;;--------
 
 ;;<signature>
-(define ifbeat? (lambda (measure downbeat procedure  . elseprocedure) '()))
+(define ifbeat? (lambda (measure downbeat procedure  &elseprocedure) '()))
 ;;</signature>
 
 (define-macro (ifbeat? x y args . elseargs)
@@ -180,7 +180,7 @@
 ;;;--------
 
 ;;<signature>
-(define ifbeat-gt?  (lambda (measure downbeat procedure . elseprocedure) '()))
+(define ifbeat-gt?  (lambda (measure downbeat procedure &elseprocedure) '()))
 ;;</signature>
 
 (define-macro (ifbeat-gt? x y args . elseargs)
@@ -201,7 +201,7 @@
 ;;;--------
 
 ;;<signature>
-(define ifbeat-lt? (lambda (measure downbeat procedure . elseprocedure) '()))
+(define ifbeat-lt? (lambda (measure downbeat procedure &elseprocedure) '()))
 ;;</signature>
 
 (define-macro (ifbeat-lt? x y args . elseargs)
@@ -224,7 +224,7 @@
 ;;;--------
 
 ;;<signature>
-(define ifbeat-btw? (lambda (measure downbeat1 downbeat2 procedure . elseprocedure) '()))
+(define ifbeat-btw? (lambda (measure downbeat1 downbeat2 procedure &elseprocedure) '()))
 ;;</signature>
 
 (define-macro (ifbeat-btw? x y z args . elseargs)

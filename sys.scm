@@ -16,10 +16,10 @@
 
 ; installation-specific locations
 
-(define *sys:home_dir* "/Users/code/impromptu/")
-(define *sys:bat_dir* "/Users/music/Battery/")
-(define *sys:patches_dir* "/Users/code/impromptu/patches/")
-(define *sys:tmp* "/Users/tmp/")
+(define *sys:home_dir* "/Users/michele.pasin/Dropbox/code/impromptu/")
+(define *sys:bat_dir* "/Users/michele.pasin/SugarSync/music/Battery/")
+(define *sys:patches_dir* "/Users/michele.pasin/Dropbox/code/impromptu/_patches/")
+(define *sys:tmp* "/Users/michele.pasin/tmp/")
 
 
 

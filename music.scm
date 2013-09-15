@@ -288,7 +288,9 @@
            (play (eval offset) thisau note vol dur)))
          (#t (print "Error: the function only accepts 3 or 4 argument"))))
 
-
+ ;shortcuts
+(define iplay mu:play-au)
+(define withau mu:with-au)
 
 
 

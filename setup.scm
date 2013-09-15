@@ -8,7 +8,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-
 ;; an assoc list of the insts I normally use
 (define *setup:instruments* '((++dls . ("aumu" "dls " "appl"))
                             (++crystal .  ("aumu" "AtFr" "GOSW"))
@@ -60,12 +59,23 @@
                 (patch:printdir ,++instrument)))
 
 
+;; shortcuts 
 
-(define --create setup:create-au)
+(define --create setup:create-au) ;; just a different name for it
 
 
-
-
+(define-macro (--createdls name bus)
+   `(setup:create-au ,name ++dls ,bus))
+(define-macro (--createzebra name bus)
+   `(setup:create-au ,name ++zebra ,bus))
+(define-macro (--createkontakt name bus)
+   `(setup:create-au ,name ++kontakt4 ,bus))
+(define-macro (--createabsynth name bus)
+   `(setup:create-au ,name ++absynth4 ,bus))
+(define-macro (--createfm8 name bus)
+   `(setup:create-au ,name ++fm8 ,bus))
+(define-macro (--createsampler name bus)
+   `(setup:create-au ,name ++impromptusampler ,bus))
 
 
 ;; macro that loads up the basic stuff you need to get going
@@ -94,247 +104,148 @@
 
 
 ;;--------
-;  Wed Mar  6 19:02:08 GMT 2013
 ;  LOADING SAMPLES FROM DIRECTORY 
 
-;; creates symbols for each one: "=sample1.wav="
+;; ARGS
+;; sampler: an impromptu sampler instance
+;; location: a folder containing some stereo samples
+;; idx: the position where samples should start, eg 1 or 50
+
+; COMMENTS:
+;; Impromptu sampler works ONLY with STEREO files - it'll crash if you pass it a mono one!
+;; It also creates scheme symbols for each sample file eg "=sample1.wav=" (so to facilitate coding)
 ;; subs white spaces with '-' and lowercases the names
 
-;eg
+;TODO:
+;; add macro so that index is 1 by default..
+;; specify how samples are mapped over pitch range..
+;; create the *my-audio-files* dynamically so that we can have more for more sampler instances...
 
+;EXAMPLE
 ;(--setup)
-;(--create sam ++impromptusampler 2)
-;(=load= sam "/Users/michele.pasin/Music/_samples/Drum Machines/Moog Concertmate MG-1" 1)
+;(--createsampler sam 3)
+;(setup:loadsamples  sam "/my/_samples/Drum Machines/Moog Concertmate MG-1")
+;(mu:test sam =sample1.wav=)
 ;;--------
 
 
-(define setup:load_samples 
-   (lambda (sampler location)
+;; GLOBAL variable: a vector to store audio data loaded via setup:loadsamples
+(define *my-audio-files* (make-vector 127))
+
+; note: crashes with MONO files
+(define __loadsamples
+   (lambda (sampler location idx)
       (let ((files (string-split (io:directory-list location) "\n"))
-            (index 1))
-         (for-each (lambda (x)
-                      (if (or (cl:string-find x ".wav") (cl:string-find x ".aif"))
-                          (begin (au:play:set-sample-data sampler index (au:load-audio-data (string-append location "/" x)))
-                                 (let ((name (string->atom (string-append "=" (cl:string-lower (string-replace x " " "-")) "="))))
-                                    (eval `(define ,name ,index)  (interaction-environment))
-                                    (print '==>Loaded 'sample: x 'as name))
-                                 (set! index (+ index 1)))))
-                   files))))
+            (report ""))
+         (for-each (lambda (filename)
+                      (let ((x (string-replace (cl:string-lower filename) " " "-")))
+                         (if (or (cl:string-find x ".wav") 
+                                 (cl:string-find x ".aif") 
+                                 (cl:string-find x ".aiff"))
+                             (begin (vector-set! *my-audio-files* idx 
+                                                 (au:load-audio-data (string-append location "/" filename)))
+                                    (au:play:set-sample-data sampler idx 
+                                                             (vector-ref *my-audio-files* idx))
+                                    (let ((name (string->atom (string-append "=" x "="))))
+                                       (eval `(define ,name ,idx)  (interaction-environment))
+                                       (set! report 
+                                             (string-append report ".. " 
+                                                            (string-append "=" x "=")  
+                                                            " [idx=" (number->string idx) "]"
+                                                            " ==> sample '" filename "'\n")))
+                                    (set! idx (+ idx 1))))))
+                   files)
+         (print report))))
+
+
+
+(macro (setup:loadsamples args)  
+   (cond ((equal? (length (cdr args)) 2)
+          `(let ((sampler ,(cadr args))
+                 (path ,(caddr args)))
+              (__loadsamples sampler path 1)))
+          ((equal? (length (cdr args)) 3)
+	      `(let ((sampler ,(cadr args))
+	             (path ,(caddr args))
+				 (idx ,(cadddr args)))           
+            (__loadsamples sampler path idx)))
+          (#t (print "Error: the function only accepts 2 or 3 argument (instrument/path/&idx)"))))
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-;##################
-; VOLUME CONTROLLER
+; ================
+;  VOLUME SLIDER
 ;
-;Description
-;-----------------------------------------
-; This object lets you create a UI for managing volume
-; It allows you to set volume via drag and drop, and also returns the volume you set via the 'set-volume method on the object
-; each object has its own color
-; ..todo..
+; eg: 
+;(define *volslider* (setup:volumeslider '(piano1 piano2)))
+;; or you could do simply
+;(define vol (setup:volumeslider 2))
 
-
-; Adding behaviour for specific instruments: 
-;-----------------------------------------
-; It works with DLS and ZEBRA for now; you can find out which are the volumes via
-;(au:print-params dls *au:global-scope*)
-;(au:set-param (now) dls 2 0 0 1)
+;; remember to release the object when closing!
+; (objc:release *volslider*)
 ;
-;
+; ================
+          
 
 
 
-; Example:
-;-----------------------------------------
 
-;(setup:base)
-;(define c1 (setup:volume-object ++dls dls))
-;(c1 'get) ;; gets the volume value (varies depending on instrument)
-;(c1 'close) ;; closes the canvas
-;(c1 'init)  ;; recreates it (the color is changed)
-;(c1 'set (cosr 20 30 1/128)) ;; sets a value
-;(c1 'up .1)  ;; up by .1 (till default max value)
-;(c1 'up .1 60)  ;; up by .1 till 60
-;(c1 'down .5 40) ;; down by .5 till 40
-
-; if opening too many canvas that are not needed, reset the container: (define *setup:volsbuffer* '())
-;
-;##################
-
-
-
-;a list of assocs composed by (++instname . (maxvolume volparam_number)) 
-;eg: (cadr (assoc '++dls *setup:volumes-constants*)) ; => 70
-
-(define *setup:volumes-constants* '((++dls . (70 1)) ;; max should be 120 but it clips! // 0=tuning; 1=vol; 2=reverb
-                                  (++zebra . (200 0)) ; 0=volume
-                                  ;; in kontakt define it manually via UI, then save the patch! allvalues vary between 1 and 0
-                                  (++kontakt4 . (1.0 0)) ; 0=volume, 
-                                  ))
-
-
-;; container 
-(define *setup:volsbuffer* '())
-
-
-(define __volume-object
-   (lambda (++instrument-type instance instance_name)
-      (let* ((klassname '<volume_controller>)
-             (super (oo:make-object))
-             ;;variables
-             (*canvas* #f)
-             (*canvas_max_x* #f)
-             (*canvas_max_y* #f)
-             (*layer* #f)
-             (*layer_height* #f)  
-             (*layer_width* #f)  
-             (*layer_x* #f)
-             (*layer_y* #f)          
-             (*maxvolume* #f) ;;  
-             (*fill* #f)      
-             (*stroke* #f)
-             (*inst-type* ++instrument-type)
-             (*instance* instance)
-             (*instance-name* #f)
-             (*instance-id* (gensym))
-
-             ;; main methods
-             (init (lambda () 
-                      (set! *canvas* (gfx:make-canvas 140 300)) ;; default                                
-                      (io:register-mouse-events *canvas*)
-                      (gfx:clear-canvas (now) *canvas* color:black) 
-                      (set! *canvas_max_x* (car (gfx:get-window-size *canvas*)))
-                      (set! *canvas_max_y* (cdr (gfx:get-window-size *canvas*)))
-                      (set! *layer_width* *canvas_max_x*)
-                      (set! *layer_height* *canvas_max_y*) 
-                      (set! *layer_x* 0)
-                      (set! *layer_y* 0)
-                      (set! *fill* (list 1.0 (random) (random) 1.0))
-                      (set! *stroke* (list 0.5 0.9 1.0 1.0))
-                      (set! *maxvolume* (if (assoc ++instrument-type *setup:volumes-constants*)
-                                            (cadr (assoc ++instrument-type *setup:volumes-constants*))
-                                            120)) ;;default   
-                      (set! *instance-name* (string-append instance_name " (max=" (atom->string *maxvolume*) ")"))
-                      ;(*instance-name* (string-append instance_name (string-replace (symbol->string *instance-id*) "gensym" "")))
-                      (setup:window_title *canvas*  *instance-name*)   
-
-                                          ;; create the layer
-                      (set! *layer* (gfx:make-rectangle 0 0 *layer_width* *layer_height*))
-                      (gfx:draw-path (now) *canvas* *layer* '(0 0 0 0) '(0 0 0 0) 2.0)
-
-                      ;; Store in a container all the symbols that are needed to identify an object: 
-                      ;; this is needed by io:mouse-drag, cause it needs to check for all existing canvases!
-                      (set! *setup:volsbuffer* (append *setup:volsbuffer* (list (list *canvas* *maxvolume* *fill* ++instrument-type instance))))   
-                      ;;
-                      (set! io:mouse-drag (lambda (x y canvas)
-                                             (for-each (lambda (mem)
-                                                          (let* ((acanvas (cl:nth 0 mem))
-                                                                 (maxvolume (cl:nth 1 mem))
-                                                                 (fill (cl:nth 2 mem))
-                                                                 (inst-type (cl:nth 3 mem))
-                                                                 (inst-instance (cl:nth 4 mem))
-                                                                 (vol (* y (/ maxvolume *canvas_max_y*))))                                                           
-                                                             (if (equal? canvas (objc:get-address acanvas))                                                                
-                                                                 (if (gfx:point-in-path? *layer* x y) 
-                                                                     (begin (_apply-slider y acanvas fill)
-                                                                            (if #f (print (objc:get-address acanvas) maxvolume fill vol))
-                                                                            (_apply-volume vol inst-type inst-instance))))))
-                                                       *setup:volsbuffer*))
-
-                            )))                                                                              
+(define setup:volumeslider
+ (lambda (params)
+    (let* ((slidersTot (if (number? params) params (length params)))
+           (labels (if (list? params) (map (lambda (x) (symbol->string x)) params) 
+                       #f))
+           (winWidth (* slidersTot 120))
+           (window (objc:make "NSWindow" "initWithContentRect:styleMask:backing:defer:"
+                        (list 200 200 winWidth 300)
+                        1 2 0)) 
+           (sliders (make-list-with-proc slidersTot (lambda (i)
+                           (let ((slider (objc:make "NSSlider" "initWithFrame:"  ;; x y width height
+                                                    (list (+ 40 (* i 120)) 60 40 200))))
+                              (objc:call slider "setTarget:" *objc:bridge*)
+                              (objc:call slider "setAction:" "floatAction:")
+                              (objc:call slider "setTag:" i)
+                              (objc:call slider "setMaxValue:" 3.0)
+                              (objc:call (objc:call window "contentView") "addSubview:" slider)
+                              slider))))
+           ;; text fields are updated as slider moves
+           (text-fields (make-list-with-proc slidersTot (lambda (i)
+                           (let ((tf (objc:make "NSTextField" "initWithFrame:"
+                                                (list (+ 28 (* i 120)) 20 65 20))))
+                              (objc:call tf "setEditable:" #f)
+                              (objc:call (objc:call window "contentView") "addSubview:" tf)
+                              tf))))
+           ;; text labels display au name (if passed as list) or its bus number
+           (text-labels  (make-list-with-proc slidersTot (lambda (i)
+                           (let ((tf (objc:make "NSTextField" "initWithFrame:"
+                                                (list (+ 33 (* i 120)) 270 50 20))))
+                              (objc:call tf "setEditable:" #f)
+                              (objc:call (objc:call window "contentView") "addSubview:" tf)
+                              (if labels
+                                  (objc:call tf "setStringValue:" (list-ref labels i))
+                                  (objc:call tf "setStringValue:" (string-append "ch:" (number->string i))))
+                              tf))))
+           )
+       (objc:call window "orderFront:" 0)
+       (objc:call window "setTitle:" "Mixer Volumes")
+       (set! objc:action
+             (lambda (id val)
+                (let* ((tf (list-ref text-fields id))
+                       (slider (list-ref sliders id))
+                       (idchannel (+ id 1)) ;; channels start at 1, slider id at 0
+                       (value (objc:call slider "floatValue")))
+                   (objc:call tf "setStringValue:"
+                              (number->string value))
+                   (au:set-param (now) *mixer* 0 *au:input-scope* idchannel value))))
+       window)))
 
 
-             ;; INNER method: draws the slider position
-             (_apply-slider (lambda (val acanvas fill)
-                              (let ((rect (gfx:make-rectangle 0 0 *canvas_max_x* val)))
-                                 (begin (gfx:clear-canvas (now) acanvas color:black)
-                                        (gfx:draw-path (now) acanvas rect *stroke* fill 1.0)))))
-             ;; INNER method: sets the vol depending on inst type
-             (_apply-volume (lambda (vol inst-type inst-instance)
-                              (if (assoc inst-type *setup:volumes-constants*)
-                                  (au:set-param (now) inst-instance 
-                                                (caddr (assoc inst-type *setup:volumes-constants*)) 
-                                                0 0 vol)
-                                  (print "Instrument type not recognized"))))
 
-             ;; GETS the vol (no need to check explicitly the inst-type cause it's internal to the obj)
-             (get (lambda ()
-                            (if (assoc ++instrument-type *setup:volumes-constants*)
-                                (au:get-param instance 
-                                              (caddr (assoc ++instrument-type *setup:volumes-constants*)) 
-                                              0 0)
-                                (print "Instrument type not recognized"))))
 
-             ;; SETS the vol manually, and updates the slider (no drag and drop)
-             (set (lambda (vol)
-                     (let ((val (floor (* vol (/ *canvas_max_y* *maxvolume* )))))
-                        (if (<= vol *maxvolume*) 
-                            (begin (_apply-slider val *canvas* *fill*)
-                                   (_apply-volume vol *inst-type* *instance*))
-                            (print "Value too high: maximum is " *maxvolume* " for this instrument")))))  
-             ;; ADDs a value to the vol ; a tillvalue arg is optional, otherwise it the max volume available for this instrument
-             (up (lambda (n . tillvalue)
-                   (let ((current (get))
-                         (maxvalue (if (not (null? tillvalue))
-                                       (car tillvalue)
-                                       *maxvolume*)))
-                      (if (< (+ current n) maxvalue)
-                          (set (+ current n))
-                          (set maxvalue)))))
-             ;; SUBTRACTS a value to the vol ; a tillvalue arg is optional, otherwise it's 0
-             (down (lambda (n . tillvalue)
-                   (let ((current (get))
-                         (minvalue (if (not (null? tillvalue))
-                                       (car tillvalue)
-                                       0)))
-                        (if (> (- current n) minvalue)
-                            (set (- current n))
-                            (set minvalue)))))     
-             ;; CLOSES a canvas (doesn't destroy the object) TODO: destroy?               
-             (close (lambda () 
-                       (gfx:close-canvas *canvas*) (print 'volume 'canvas 'closed)))
 
-             ;; add all the callable methods to this list:
-             (methods (append (list (cons 'init init)  
-                                    (cons 'get get)
-                                    (cons 'set set)
-                                    (cons 'up up)
-                                    (cons 'down down)
-                                    (cons 'close close)
-                                    (cons '_apply-volume _apply-volume)
-                                    (cons '_apply-slider _apply-slider))
-                              (super 'get-methods)))
-
-             (self (lambda (msg . args)
-                      (apply sys:dynamic-call
-                             ((cdr (assoc 'dispatch methods)) msg methods)
-                             args))))
-         (init)  ;; automatically init
-         (let ((current (get)))  ;; set preexisting vol
-               (set current))
-		 self)))
-
-;; signature workaround
-(define setup:volume-object (lambda (++instrument-type au-instance)))
-;; macro that lets me access the instance name as string, before evaluation
-(define-macro (setup:volume-object ++instrument au-instance)
-   `(__volume-object ,++instrument ,au-instance (sexpr->string (quote ,au-instance))))
 
 
 
